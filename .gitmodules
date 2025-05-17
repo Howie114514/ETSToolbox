@@ -1,0 +1,7 @@
+[submodule "cef"]
+	path = cef
+	url = https://github.com/chromiumembedded/cef.git
+	branch = 4472
+[submodule "cpp-httplib"]
+	path = cpp-httplib
+	url = https://github.com/yhirose/cpp-httplib
