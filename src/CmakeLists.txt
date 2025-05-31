@@ -1,0 +1,14 @@
+set(CMAKE_CXX_STANDARD 23)
+file(GLOB SOURCES "*.cpp" "*.c")
+#add_compile_definitions(DEBUG_MODE)
+add_library(ETSToolbox SHARED ${SOURCES})
+set_target_properties(ETSToolbox PROPERTIES 
+    LINKER_LANGUAGE C
+    OUTPUT_NAME "winmm"
+    PREFIX ""
+)
+find_path(DETOURS_INCLUDE_DIRS "detours/detours.h")
+find_library(DETOURS_LIBRARY detours REQUIRED)
+add_custom_command(TARGET ETSToolbox POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:ETSToolbox> "C:\\Program Files (x86)\\ETS\\winmm.dll")
+target_include_directories(ETSToolbox PRIVATE ${DETOURS_INCLUDE_DIRS})
+target_link_libraries(ETSToolbox PRIVATE ${DETOURS_LIBRARY})
