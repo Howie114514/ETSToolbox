@@ -26,3 +26,5 @@ E听说外挂 一句不读轻松拿满 让你成为听说课上最靓的仔
 ---
 ## 截图
 ![Screenshot](assets/image.png)
+
+![Screenshot](<assets/screenshot1.png>)
