@@ -413,19 +413,19 @@ BOOL WINAPI Load()
 	TCHAR tzTemp[MAX_PATH * 2];
 
 	//
-	// ÕâÀïÊÇ·ñ´ÓÏµÍ³Ä¿Â¼»òµ±Ç°Ä¿Â¼¼ÓÔØÔ­Ê¼DLL
+	// è¿™é‡Œæ˜¯å¦ä»ç³»ç»Ÿç›®å½•æˆ–å½“å‰ç›®å½•åŠ è½½åŸå§‹DLL
 	//
-	//GetModuleFileName(NULL,tzPath,MAX_PATH); //»ñÈ¡±¾Ä¿Â¼ÏÂµÄ
+	//GetModuleFileName(NULL,tzPath,MAX_PATH); //è·å–æœ¬ç›®å½•ä¸‹çš„
 	//PathRemoveFileSpec(tzPath);
 
-	GetSystemDirectory(tzPath, MAX_PATH); //Ä¬ÈÏ»ñÈ¡ÏµÍ³Ä¿Â¼µÄ
+	GetSystemDirectory(tzPath, MAX_PATH); //é»˜è®¤è·å–ç³»ç»Ÿç›®å½•çš„
 
 	lstrcat(tzPath, TEXT("\\winmm.dll"));
 
 	g_OldModule = LoadLibrary(tzPath);
 	if (g_OldModule == NULL)
 	{
-		wsprintf(tzTemp, TEXT("ÎŞ·¨ÕÒµ½Ä£¿é %s,³ÌĞòÎŞ·¨Õı³£ÔËĞĞ"), tzPath);
+		wsprintf(tzTemp, TEXT("æ— æ³•æ‰¾åˆ°æ¨¡å— %s,ç¨‹åºæ— æ³•æ­£å¸¸è¿è¡Œ"), tzPath);
 		MessageBox(NULL, tzTemp, TEXT("AheadLib"), MB_ICONSTOP);
 	}
 
@@ -447,7 +447,7 @@ FARPROC WINAPI GetAddress(PCSTR pszProcName)
 			pszProcName = szProcName;
 		}
 
-		wsprintf(tzTemp, TEXT("ÎŞ·¨ÕÒµ½º¯Êı %hs,³ÌĞòÎŞ·¨Õı³£ÔËĞĞ"), pszProcName);
+		wsprintf(tzTemp, TEXT("æ— æ³•æ‰¾åˆ°å‡½æ•° %hs,ç¨‹åºæ— æ³•æ­£å¸¸è¿è¡Œ"), pszProcName);
 		MessageBox(NULL, tzTemp, TEXT("AheadLib"), MB_ICONSTOP);
 		ExitProcess(-2);
 	}
@@ -662,16 +662,16 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD dwReason, PVOID pvReserved)
 
 		if (Load() && Init())
 		{
-			TCHAR szAppName[MAX_PATH] = TEXT("EtsShell.exe");//ÇëĞŞ¸ÄËŞÖ÷½ø³ÌÃû
+			TCHAR szAppName[MAX_PATH] = TEXT("EtsShell.exe");//è¯·ä¿®æ”¹å®¿ä¸»è¿›ç¨‹å
 			TCHAR szCurName[MAX_PATH];
 
 			GetModuleFileName(NULL, szCurName, MAX_PATH);
 			PathStripPath(szCurName);
 
-			//ÊÇ·ñÅĞ¶ÏËŞÖ÷½ø³ÌÃû
+			//æ˜¯å¦åˆ¤æ–­å®¿ä¸»è¿›ç¨‹å
 			if (StrCmpI(szCurName, szAppName) == 0)
 			{
-				//Æô¶¯²¹¶¡Ïß³Ì»òÕßÆäËû²Ù×÷
+				//å¯åŠ¨è¡¥ä¸çº¿ç¨‹æˆ–è€…å…¶ä»–æ“ä½œ
 				HANDLE hThread = CreateThread(NULL, NULL, ThreadProc, NULL, NULL, NULL);
 				if (hThread)
 				{

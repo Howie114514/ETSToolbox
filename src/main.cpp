@@ -9,7 +9,7 @@
 #include<print>
 #include"logger.h"
 
-ServerWrapper server;
+ServerWrapper* server = nullptr;
 
 typedef int(CEF_EXPORT* cef_string_from_ptr_t)(const TCHAR*, size_t, cef_string_utf16_t*);
 cef_string_from_ptr_t cef_string_from_ptr = nullptr;
@@ -36,6 +36,10 @@ void SetAsPopup(cef_window_info_t* window_info) {
 }
 
 void evalJS(_cef_browser_t* browser, _cef_frame_t* frame, std::string code) {
+	if (cef_string_from_ptr == nullptr || frame == nullptr) {
+		Logger::error("æ— æ³•æ‰§è¡Œæ³¨å…¥è„šæœ¬ï¼šCEF å­—ç¬¦ä¸²è½¬æ¢å‡½æ•°æˆ–é¡µé¢æ¡†æ¶ä¸å¯ç”¨");
+		return;
+	}
 	_string eval_str = convertStr(code);
 	cef_string_t eval{};
 	cef_string_from_ptr(eval_str.c_str(), eval_str.length(), &eval);
@@ -55,38 +59,47 @@ namespace handlers {
 		_cef_browser_t* browser,
 		_cef_frame_t* frame,
 		cef_transition_type_t transition_type) {
+		if (frame == nullptr) {
+			if (origins::pOnLoadStart != nullptr) {
+				reinterpret_cast<decltype(&handlers::onLoadStart)>(origins::pOnLoadStart)(self, browser, frame, transition_type);
+			}
+			return;
+		}
 		Logger::info("is_main_frame:{}",frame->is_main(frame));
+		const auto staticFilesPath = getStaticFilesDirectory();
 		if (frame->is_main(frame)) {
-			Logger::info("Ö÷Ò³Ãæ¿ªÊ¼¼ÓÔØ£¬×¢ÈëÔ¤¼ÓÔØ½Å±¾");
+			Logger::info("ä¸»é¡µé¢å¼€å§‹åŠ è½½ï¼Œæ³¨å…¥é¢„åŠ è½½è„šæœ¬");
 			evalJS(browser, frame, "window._etb_resserver='http://localhost:8080/static';");
 			evalJS(browser, frame, "window._ets_cache_path='http://localhost:8080/ets';");
 			evalJS(browser, frame, "window._etb_api='http://localhost:8080/api';");
-			std::ifstream f(STATIC_FILES_PATH + "/index.js");
+			std::ifstream f(staticFilesPath / "index.js");
 			if (f.is_open()) {
 				std::string str((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
 				f.close();
 				evalJS(browser, frame, str);
-			}else Logger::error("index.jsÎÄ¼ş²»´æÔÚ£¬Çë¿¼ÂÇÉ¾³ı{}ÎÄ¼ş¼Ğ²¢ÖØÆôEÌıËµ", STATIC_FILES_PATH);
+			}else Logger::error("index.jsæ–‡ä»¶ä¸å­˜åœ¨ï¼š{}ã€‚è¯·é‡æ–°è¿è¡Œå®Œæ•´å‘è¡ŒåŒ…ä¸­çš„ install.ps1 å®‰è£…å‰ç«¯èµ„æºã€‚", to_byte_string(staticFilesPath.wstring()));
 		}
 		else {
-			Logger::info("iframe¿ªÊ¼¼ÓÔØ£¬×¢ÈëÔ¤¼ÓÔØ½Å±¾");
-			std::ifstream f(STATIC_FILES_PATH + "/index.iframe.js");
+			Logger::info("iframeå¼€å§‹åŠ è½½ï¼Œæ³¨å…¥é¢„åŠ è½½è„šæœ¬");
+			std::ifstream f(staticFilesPath / "index.iframe.js");
 			if (f.is_open()) {
 				std::string str((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
 				f.close();
 				evalJS(browser, frame, str);
 			}
-			else Logger::error("index.iframe.jsÎÄ¼ş²»´æÔÚ£¬Çë¿¼ÂÇÉ¾³ı{}ÎÄ¼ş¼Ğ²¢ÖØÆôEÌıËµ", STATIC_FILES_PATH);
+			else Logger::error("index.iframe.jsæ–‡ä»¶ä¸å­˜åœ¨ï¼š{}ã€‚è¯·é‡æ–°è¿è¡Œå®Œæ•´å‘è¡ŒåŒ…ä¸­çš„ install.ps1 å®‰è£…å‰ç«¯èµ„æºã€‚", to_byte_string(staticFilesPath.wstring()));
 		}
 
-		return reinterpret_cast<decltype(&handlers::onLoadStart)>(origins::pOnLoadStart)(self, browser, frame, transition_type);
+		if (origins::pOnLoadStart != nullptr) {
+			reinterpret_cast<decltype(&handlers::onLoadStart)>(origins::pOnLoadStart)(self, browser, frame, transition_type);
+		}
 	};
 	int CEF_CALLBACK onKeyEvent(struct _cef_keyboard_handler_t* self,
 		struct _cef_browser_t* browser,
 		const struct _cef_key_event_t* event,
 		cef_event_handle_t os_event) {
-		auto host = browser->get_host(browser);
-		if (event->type == KEYEVENT_RAWKEYDOWN) {
+		auto host = browser == nullptr ? nullptr : browser->get_host(browser);
+		if (event != nullptr && host != nullptr && event->type == KEYEVENT_RAWKEYDOWN) {
 			if (event->windows_key_code == VK_F12) {
 				cef_window_info_t windowInfo{};
 				cef_browser_settings_t settings{};
@@ -95,22 +108,31 @@ namespace handlers {
 				host->show_dev_tools(host, &windowInfo, 0, &settings, &point);
 			}
 		}
-		return reinterpret_cast<decltype(&handlers::onKeyEvent)>(origins::pOnKeyEvent)(self, browser, event, os_event);
+		if (origins::pOnKeyEvent != nullptr) {
+			return reinterpret_cast<decltype(&handlers::onKeyEvent)>(origins::pOnKeyEvent)(self, browser, event, os_event);
+		}
+		return 0;
 	};
 };
 
 PVOID pGetKeyboardHandler = nullptr;
 _cef_keyboard_handler_t* CEF_CALLBACK hGetKeyboardHandler(_cef_client_t* self) {
+	if (pGetKeyboardHandler == nullptr) return nullptr;
 	auto handler = reinterpret_cast<decltype(&hGetKeyboardHandler)>(pGetKeyboardHandler)(self);
-	handlers::origins::pOnKeyEvent = handler->on_key_event;
-	handler->on_key_event = handlers::onKeyEvent;
+	if (handler != nullptr && handler->on_key_event != handlers::onKeyEvent) {
+		handlers::origins::pOnKeyEvent = handler->on_key_event;
+		handler->on_key_event = handlers::onKeyEvent;
+	}
 	return handler;
 }
 PVOID pGetLoadHandler = nullptr;
 _cef_load_handler_t* CEF_CALLBACK hGetLoadHandler(_cef_client_t* self) {
+	if (pGetLoadHandler == nullptr) return nullptr;
 	auto handler = reinterpret_cast<decltype(&hGetLoadHandler)>(pGetLoadHandler)(self);
-	handlers::origins::pOnLoadStart = handler->on_load_start;
-	handler->on_load_start = handlers::onLoadStart;
+	if (handler != nullptr && handler->on_load_start != handlers::onLoadStart) {
+		handlers::origins::pOnLoadStart = handler->on_load_start;
+		handler->on_load_start = handlers::onLoadStart;
+	}
 	return handler;
 }
 
@@ -123,37 +145,55 @@ int h_cef_browser_host_create_browser(
 	struct _cef_dictionary_value_t* extra_info,
 	struct _cef_request_context_t* request_context)
 {
-	Logger::info("[Hook] ä¯ÀÀÆ÷´°¿Ú´´½¨");
-	pGetKeyboardHandler = client->get_keyboard_handler;
-	client->get_keyboard_handler = hGetKeyboardHandler;
-	pGetLoadHandler = client->get_load_handler;
-	client->get_load_handler = hGetLoadHandler;
+	Logger::info("[Hook] æµè§ˆå™¨çª—å£åˆ›å»º");
+	if (client != nullptr && client->get_keyboard_handler != nullptr && client->get_keyboard_handler != hGetKeyboardHandler) {
+		pGetKeyboardHandler = client->get_keyboard_handler;
+		client->get_keyboard_handler = hGetKeyboardHandler;
+	}
+	if (client != nullptr && client->get_load_handler != nullptr && client->get_load_handler != hGetLoadHandler) {
+		pGetLoadHandler = client->get_load_handler;
+		client->get_load_handler = hGetLoadHandler;
+	}
 	return reinterpret_cast<decltype(&h_cef_browser_host_create_browser)>(pCefBrowserHostCreateBrowser)(windowInfo, client, url, settings, extra_info, request_context);
 }
 
 PVOID pCefShutdown = nullptr;
 void hCefShutdown() {
-	server.shutdown();
+	if (server != nullptr) {
+		server->shutdown();
+	}
 	return reinterpret_cast<decltype(&hCefShutdown)>(pCefShutdown)();
 }
 void setupHooks() {
-	Logger::info("³õÊ¼»¯HookÖĞ");
-	DetourTransactionBegin();
-	DetourUpdateThread(GetCurrentThread());
+	Logger::info("åˆå§‹åŒ–Hookä¸­");
 	pCefBrowserHostCreateBrowser = DetourFindFunction("libcef.dll", "cef_browser_host_create_browser");
 #ifdef UNICODE
 	cef_string_from_ptr = reinterpret_cast<cef_string_from_ptr_t>(DetourFindFunction("libcef.dll", "cef_string_wide_to_utf16"));
 #else
 	cef_string_from_ptr = reinterpret_cast<cef_string_from_ptr_t>(DetourFindFunction("libcef.dll", "cef_string_ascii_to_utf16"));
 #endif
-	DetourAttach(&pCefBrowserHostCreateBrowser, (PVOID)h_cef_browser_host_create_browser);
-	auto result = DetourTransactionCommit();
-	Logger::info("Îªlibcef.dll/cef_browser_host_create_browser({})¸½¼ÓHook ×´Ì¬£º{}", pCefBrowserHostCreateBrowser, result == NO_ERROR ? "³É¹¦" : "Ê§°Ü");
-	DetourTransactionBegin();
+	if (pCefBrowserHostCreateBrowser != nullptr && cef_string_from_ptr != nullptr) {
+		DetourTransactionBegin();
+		DetourUpdateThread(GetCurrentThread());
+		DetourAttach(&pCefBrowserHostCreateBrowser, (PVOID)h_cef_browser_host_create_browser);
+		auto result = DetourTransactionCommit();
+		Logger::info("ä¸ºlibcef.dll/cef_browser_host_create_browser({})é™„åŠ Hook çŠ¶æ€ï¼š{}", pCefBrowserHostCreateBrowser, result == NO_ERROR ? "æˆåŠŸ" : "å¤±è´¥");
+	}
+	else {
+		Logger::error("æœªæ‰¾åˆ°æ‰€éœ€çš„ CEF æµè§ˆå™¨å‡½æ•°ï¼Œå·²è·³è¿‡é¡µé¢æ³¨å…¥ Hook");
+	}
+
 	pCefShutdown = DetourFindFunction("libcef.dll", "cef_shutdown");
-	DetourAttach(&pCefShutdown, (PVOID)hCefShutdown);
-	result = DetourTransactionCommit();
-	Logger::info("Îªlibcef.dll/cef_shutdown({})¸½¼ÓHook ×´Ì¬£º{}", pCefShutdown, result == NO_ERROR ? "³É¹¦" : "Ê§°Ü");
+	if (pCefShutdown != nullptr) {
+		DetourTransactionBegin();
+		DetourUpdateThread(GetCurrentThread());
+		DetourAttach(&pCefShutdown, (PVOID)hCefShutdown);
+		auto result = DetourTransactionCommit();
+		Logger::info("ä¸ºlibcef.dll/cef_shutdown({})é™„åŠ Hook çŠ¶æ€ï¼š{}", pCefShutdown, result == NO_ERROR ? "æˆåŠŸ" : "å¤±è´¥");
+	}
+	else {
+		Logger::warn("æœªæ‰¾åˆ° cef_shutdownï¼Œå·²è·³è¿‡å…³é—­ Hook");
+	}
 }
 
 DWORD WINAPI ThreadProc(LPVOID lpThreadParameter)
@@ -164,7 +204,7 @@ DWORD WINAPI ThreadProc(LPVOID lpThreadParameter)
 	BYTE data1[] = { 0x90, 0x90, 0x90, 0x90 };
 
 	//
-	// ÈÆ¹ıVMP3.x µÄÄÚ´æ±£»¤
+	// ç»•è¿‡VMP3.x çš„å†…å­˜ä¿æŠ¤
 	//
 	hProcess = OpenProcess(PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE, FALSE, GetCurrentProcessId());
 	if (hProcess)
@@ -175,9 +215,16 @@ DWORD WINAPI ThreadProc(LPVOID lpThreadParameter)
 	bool isMainProc = isMainProcess();
 	if (isMainProc)
 		createConsole();
-	Logger::info("½ø³Ì²ÎÊı£º{} Ö÷½ø³Ì£º{}", GetCommandLineA(), isMainProc);
+	Logger::info("è¿›ç¨‹å‚æ•°ï¼š{} ä¸»è¿›ç¨‹ï¼š{}", to_byte_string(GetCommandLineW()), isMainProc);
+	try {
+		server = new ServerWrapper();
+	}
+	catch (const std::exception& error) {
+		Logger::error("åˆå§‹åŒ–æœ¬åœ°æœåŠ¡å¤±è´¥ï¼š{}", error.what());
+		return 1;
+	}
 	setupHooks();
-	server.listen();
-	Logger::info("¼ÓÔØÍê³É¡£°´ÏÂF12¿É´ò¿ªjs¿ØÖÆÌ¨¡£");
+	server->listen();
+	Logger::info("åŠ è½½å®Œæˆã€‚æŒ‰ä¸‹F12å¯æ‰“å¼€jsæ§åˆ¶å°ã€‚");
 	return 0;
 }

@@ -41,7 +41,7 @@ namespace {
 		void _log(Levels lvl, std::format_string<Args...> fmt, Args ...args);
 		template<typename... Args>
 		void _log(Levels lvl, std::format_string<Args...> fmt, Args ...args) {
-			std::print("[Eฬýหตอโนา] {} [", getTimestamp());
+			std::print("[ETSToolbox] {} [", getTimestamp());
 			outputLevel(lvl);
 			std::println("] - {}", std::format(fmt, std::forward<Args>(args)...));
 		};
